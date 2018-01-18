@@ -12,8 +12,7 @@ var broadRawSheet = SpreadsheetApp.getActive().getSheetByName("Broader Legislati
  function onOpen() {
    var ss = SpreadsheetApp.getActiveSpreadsheet();
    var menuEntries = [];
-   //menuEntries.push({name: "Refresh the anti list", functionName: "updateAnti"});
-   //menuEntries.push(null); // line separator
+   menuEntries.push({name: "Refresh the anti list", functionName: "updateAnti"});
    menuEntries.push({name: "Refresh all lists", functionName: "updateAll"});
 
    ss.addMenu("PPMO Update", menuEntries);
@@ -34,31 +33,32 @@ function fontFormatting(curSheet){
   //var curSheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
   //Setting the ranges for the columns
   var bigText = curSheet.getRange("A:E");
-  var smallText = curSheet.getRange("F:F");
+  var smallText = curSheet.getRange("F:H");
   
   //Setting the font style and sizes
   
-  curSheet.getRange("A:F").setFontFamily("Arial");
+  curSheet.getRange("A:H").setFontFamily("Arial");
+  curSheet.getRange("A2:H").setFontColor("").setFontWeight("normal").setBackground("white");
   bigText.setFontSize(11);
   smallText.setFontSize(10);
   
   //Setting Header size, weight and background
-  curSheet.getRange("A1:F1").setFontSize(12);
-  curSheet.getRange("A1:F1").setFontWeight("bold");
-  curSheet.getRange("A1:F1").setBackground("#ec008c");
-  curSheet.getRange("A1:F1").setFontColor("white");
-    curSheet.setRowHeight(1, 50);
+  curSheet.getRange("A1:H1").setFontSize(12).setFontWeight("bold");
+  //curSheet.getRange("A1:F1").setFontWeight("bold");
+  curSheet.getRange("A1:H1").setBackground("#ec008c");
+  curSheet.getRange("A1:H1").setFontColor("white");
+  curSheet.setRowHeight(1, 50);
   
   //Setting cell alignment and wrapping
   curSheet.getRange("A:D").setHorizontalAlignment("center");
   curSheet.getRange("E2:E100").setHorizontalAlignment("left");
-  curSheet.getRange("F:F").setHorizontalAlignment("center");
+  curSheet.getRange("F:H").setHorizontalAlignment("center");
   curSheet.getRange("E1").setHorizontalAlignment("center");
-  curSheet.getRange("A:F").setWrap(true);
-  curSheet.getRange("A:F").setVerticalAlignment("middle"); 
+  curSheet.getRange("A:H").setWrap(true);
+  curSheet.getRange("A:H").setVerticalAlignment("middle"); 
   
   //Sort everything!
-  //curSheet.sort(1);
+  curSheet.sort(1);
   
   //Freeze the first row
   curSheet.setFrozenRows(1);
@@ -78,41 +78,41 @@ function updateAll(){
 }
 
 function pullBills(origSheet, newSheet){
-  newSheet.getRange("A:F").clearContent();
-  var rownumber = origSheet.getLastRow();
-  var extdata =  origSheet.getRange(2, 3, rownumber, 1).getValues();
-  var extlinks = origSheet.getRange(2, 1, rownumber, 2).getFormulas();
-  var col3values = origSheet.getRange(2, 4, rownumber, 5).getValues();
-  var col3formulas = origSheet.getRange(2, 4, rownumber, 5).getFormulas();
-  var extdatacolors = origSheet.getRange(2, 1, rownumber, 6).getBackgrounds();
-  var extdatanew = [];
-  var extlinksnew = [];
-  var col3final = [];
+  newSheet.getRange("A:H").clearContent();
   
-  for(var row in extdata){
-    if (extdatacolors[row][0] == "#ffffff" || extdatacolors[row][0] == "#ead1dc" ){
-      extdatanew.push(extdata[row]);      
-      extlinksnew.push(extlinks[row]);
-      
-      if (col3formulas[row][0] == ""){
-        col3final.push(col3values[row]);
-        Logger.log(col3values[row]);
-      }else{      
-        col3final.push(col3formulas[row]);
-      }
+  //Grabs all of the data from the sheet
+  var fullRange = origSheet.getDataRange();
+  var formulas = fullRange.getFormulas();
+  var filteredRange = ["Bill Number", "Sponsor", "District", "Title", "Summary", "Last Action", "Co-sponsors", "Raw Bill #"];
+
+  for(var row=2; row<fullRange.getLastRow(); row++){
+    if (fullRange.getCell(row,1).getBackground() == "#ffffff" || fullRange.getCell(row,1).getBackground() == "#d9d9d9" ){ //Checks for white or grey background
+      for(var col=0; col<8; col++){
+        var formula = formulas[row-1][col];
+        var value = fullRange.getValues()[row-1][col];
+        
+        if (formula && (col==0 || col==1 || col==3)){
+          filteredRange.push(formula);
+          }else{
+          filteredRange.push(value);
+          }
+        }
     }
   }
-  
-  //Set new final row number
-  rownumber = col3final.length;
-  
-  newSheet.getRange(2, 3, rownumber, 1).setValues(extdatanew);
-  newSheet.getRange(2, 1, rownumber, 2).setFormulas(extlinksnew);
-  newSheet.getRange(2, 4, rownumber, 5).setValues(col3final);
-  newSheet.getRange("A1:F1").setValues(origSheet.getRange("A1:F1").getValues());
+  var finalBills = TwoDimensional(filteredRange,8);
+  var rownumber = finalBills.length;
+
+  newSheet.getRange(1, 1, rownumber, 8).setValues(finalBills);
 }
 
 function updateAnti(){
   pullBills(inSumAnti, antiSheet);   
   fontFormatting(antiSheet);
+}
+
+function TwoDimensional(arr, size){
+  var res = []; 
+  for(var i=0;i < arr.length;i = i+size)
+    res.push(arr.slice(i,i+size));
+  return res;
 }
